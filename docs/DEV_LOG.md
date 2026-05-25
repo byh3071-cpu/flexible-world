@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-05-25 — Phase B-4: OfflineSystem 추출 (첫 시스템 분해)
+
+- **🏗️ 메인 아키텍트**: `js/systems/OfflineSystem.js` 신설 (153줄). MainScene 의 V17 로직 두 메서드를 이주:
+  - `loadUserDataAndCatchUp` → `OfflineSystem.loadAndApply` (게임 진입 시 1회 catchUp 계산·자동 동기화 등록)
+  - `syncUserDataForOffline` → `OfflineSystem.syncNow` (변경 즉시 동기화, 호출 지점 7개)
+- 설계: `OfflineSystem(scene)` — scene 참조로 phaser 상태에 접근. 추후 순수 함수화는 별도 PR(예정).
+- MainScene.js: 1,761 → 1,632줄 (**−129줄**, ≈7%). 더 이상 안 쓰는 상수 6개 import 제거.
+- 주석 안의 옛 메서드 이름까지 정리.
+- 표준 4 게이트 통과 (syntax / 모듈 그래프 / 옛 이름 grep / 줄 수 확인).
+
+---
+
 ## 2026-05-25 — Phase B-3: 죽은 코드 player.js 삭제
 
 - **🚑 필드 메딕**: `js/player.js` 삭제 (66줄).

@@ -2,7 +2,7 @@
 import { db } from './net/firebase.js';
 import { getStartData } from './startData.js';
 import { safeVal, safeNum } from './utils/safe.js';
-import { formatOfflineTime } from './utils/time.js';
+import { OfflineSystem } from './systems/OfflineSystem.js';
 import {
     WORLD_WIDTH, WORLD_HEIGHT,
     ROCK_TARGET, TREE_TARGET, REMAINING_PER, SHOUT_COST,
@@ -20,8 +20,6 @@ import {
     SNOW_HP_PER_SEC, DESERT_SPEED_MULT,
     CRYSTAL_TARGET, CRYSTAL_REMAINING,
     WEATHER_INTERVAL_MS, ACID_RAIN_DAMAGE, ACID_RAIN_BLOCK_DAMAGE,
-    OFFLINE_RATE, OFFLINE_24H_SEC,
-    PET_HUNGER_PER_SEC, PET_HUNGER_MAX, TOTEM_ENTROPY_PER_SEC,
 } from './config/balance.js';
 
 export class MainScene extends Phaser.Scene {
@@ -238,114 +236,8 @@ export class MainScene extends Phaser.Scene {
         this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
 
         /* V17: 오프라인 시뮬레이션 — userData/블록 로드 후 catchUp 적용, 그 다음 players 설정 */
-        this.loadUserDataAndCatchUp(startX, startY, () => this.continueCreateAfterCatchUp());
-    }
-
-    /** V17: userData·블록 로드 → catchUp 적용 → players 설정 → onDisconnect/beforeunload */
-    loadUserDataAndCatchUp(startX, startY, onDone) {
-        const myId = this.myId;
-        db.ref('userData/' + myId).once('value', (userSnap) => {
-            db.ref('blocks').once('value', (blocksSnap) => {
-                const userData = userSnap.val() || {};
-                const blocksData = blocksSnap.val() || {};
-                const lastLogin = safeNum(userData.lastLoginTime, 0);
-                const now = Date.now();
-                const offlineSeconds = lastLogin > 0 ? (now - lastLogin) / 1000 : 0;
-
-                let petType = safeVal(userData.petType);
-                let petHunger = safeNum(userData.petHunger, 0);
-                let tribeId = safeVal(userData.tribeId);
-                let tribeColor = safeVal(userData.tribeColor);
-                const savedStone = safeNum(userData.stone, 0);
-                const savedWood = safeNum(userData.wood, 0);
-                const savedCrystal = safeNum(userData.crystal, 0);
-                const savedHp = Math.min(100, Math.max(0, safeNum(userData.hp, 100)));
-
-                if (offlineSeconds > 0) {
-                    const effectiveSeconds = offlineSeconds * OFFLINE_RATE;
-                    const is24hOrMore = offlineSeconds >= OFFLINE_24H_SEC;
-
-                    if (petType && (petType === 'koala' || petType === 'alpaca' || petType === 'gecko')) {
-                        petHunger += effectiveSeconds * PET_HUNGER_PER_SEC;
-                        if (petHunger >= PET_HUNGER_MAX || is24hOrMore) {
-                            petType = null;
-                            petHunger = 0;
-                        }
-                    }
-
-                    const myTotemKeys = Object.keys(blocksData).filter((k) => {
-                        const b = blocksData[k];
-                        return b && b.type === 'totem' && b.ownerId === myId;
-                    });
-                    for (const tk of myTotemKeys) {
-                        const totem = blocksData[tk];
-                        const curHp = safeNum(totem.hp, 10000);
-                        const damage = effectiveSeconds * TOTEM_ENTROPY_PER_SEC;
-                        const nhp = Math.max(0, curHp - damage);
-                        if (nhp <= 0 || is24hOrMore) {
-                            db.ref('blocks/' + tk).remove();
-                            if (tribeId === tk) { tribeId = null; tribeColor = null; }
-                        } else {
-                            db.ref('blocks/' + tk).update({ hp: nhp });
-                        }
-                    }
-
-                    if (offlineSeconds >= 60) {
-                        const timeStr = formatOfflineTime(offlineSeconds);
-                        const msgs = [];
-                        if (petType && petHunger > 20) msgs.push('펫이 배고파합니다!');
-                        if (myTotemKeys.length > 0) msgs.push('토템이 시간에 시달립니다.');
-                        if (petType === null && userData.petType) msgs.push('펫이 도망쳤습니다.');
-                        const msg = msgs.length > 0 ? `${timeStr}이 흘렀습니다. ${msgs.join(' ')}` : `${timeStr}이 흘렀습니다.`;
-                        this.time.delayedCall(800, () => this.showToast('당신이 떠나있는 동안 ' + msg));
-                    }
-                }
-
-                this.myPetHunger = Math.min(PET_HUNGER_MAX, petHunger);
-                this.myTribeId = tribeId;
-                this.myTribeColor = tribeColor;
-
-                const playerData = {
-                    x: startX, y: startY, nickname: this.myNickname, color: this.myColor,
-                    hp: savedHp, stone: savedStone, wood: savedWood, crystal: savedCrystal,
-                    tribeId, tribeColor, reputation: safeNum(userData.reputation, 0),
-                    petType, hatType: safeVal(userData.hatType), petHunger: this.myPetHunger
-                };
-                db.ref('players/' + myId).set(playerData);
-
-                db.ref('userData/' + myId).update({
-                    lastLoginTime: now, petType, petHunger: this.myPetHunger, tribeId, tribeColor,
-                    stone: playerData.stone, wood: playerData.wood, crystal: playerData.crystal, hp: playerData.hp, reputation: playerData.reputation, hatType: playerData.hatType
-                });
-                db.ref('userData/' + myId).onDisconnect().update({
-                    lastLoginTime: firebase.database.ServerValue.TIMESTAMP
-                });
-
-                const saveOnLeave = () => {
-                    db.ref('userData/' + myId).update({
-                        lastLoginTime: Date.now(),
-                        petType: this.myPetType,
-                        petHunger: this.myPetHunger,
-                        tribeId: this.myTribeId,
-                        tribeColor: this.myTribeColor,
-                        stone: this.myStone,
-                        wood: this.myWood,
-                        crystal: this.myCrystal,
-                        hp: this.myHp,
-                        reputation: this.myReputation,
-                        hatType: this.myHatType
-                    });
-                };
-                window.addEventListener('beforeunload', saveOnLeave);
-
-                db.ref('players/' + myId).onDisconnect().remove();
-
-                /* V17: 30초마다 userData 동기화 (크래시 시 데이터 손실 완화) */
-                this.time.addEvent({ delay: 30000, loop: true, callback: () => this.syncUserDataForOffline() });
-
-                onDone();
-            });
-        });
+        this.offline = new OfflineSystem(this);
+        this.offline.loadAndApply(startX, startY, () => this.continueCreateAfterCatchUp());
     }
 
     continueCreateAfterCatchUp() {
@@ -523,7 +415,7 @@ export class MainScene extends Phaser.Scene {
                     if (confirm("이 부족에 충성을 맹세하시겠습니까?")) {
                         db.ref('players/' + this.myId).update({ tribeId: tk, tribeColor: totemAt.color });
                         this.myTribeId = tk; this.myTribeColor = totemAt.color;
-                        this.syncUserDataForOffline({ tribeId: tk, tribeColor: totemAt.color });
+                        this.offline.syncNow({ tribeId: tk, tribeColor: totemAt.color });
                     } else {
                         db.ref('blocks/' + tk).transaction((cur) => {
                             if (!cur || cur.type !== 'totem') return;
@@ -535,7 +427,7 @@ export class MainScene extends Phaser.Scene {
                                         const pp = pl[pid];
                                         if (pp && pp.tribeId === tk) {
                                             db.ref('players/' + pid).update({ tribeId: null, tribeColor: null });
-                                            if (pid === this.myId) this.syncUserDataForOffline({ tribeId: null, tribeColor: null });
+                                            if (pid === this.myId) this.offline.syncNow({ tribeId: null, tribeColor: null });
                                         }
                                     });
                                 });
@@ -664,7 +556,7 @@ export class MainScene extends Phaser.Scene {
                                 db.ref('blocks/' + blockKey).set({ x: gridX, y: gridY, type: 'totem', ownerId: this.myId, hp: 10000, color: this.myColor });
                                 db.ref('players/' + this.myId).update({ stone: s - 100, wood: w - 100, tribeId: blockKey, tribeColor: this.myColor });
                                 this.myTribeId = blockKey; this.myTribeColor = this.myColor;
-                                this.syncUserDataForOffline({ tribeId: blockKey, tribeColor: this.myColor });
+                                this.offline.syncNow({ tribeId: blockKey, tribeColor: this.myColor });
                             } else if (this.currentMaterial === 'tnt') {
                                 db.ref('blocks/' + blockKey).set({ x: gridX, y: gridY, type: 'tnt', placedAt: Date.now() });
                                 db.ref('players/' + this.myId).update({ stone: s - cost.stone, wood: w - cost.wood, hp: h - cost.hp });
@@ -720,7 +612,7 @@ export class MainScene extends Phaser.Scene {
             btn.addEventListener('click', () => {
                 const val = btn.getAttribute('data-pet') === 'none' ? null : btn.getAttribute('data-pet');
                 db.ref('players/' + this.myId).update({ petType: val });
-                this.syncUserDataForOffline({ petType: val });
+                this.offline.syncNow({ petType: val });
                 this.showToast(val ? `펫: ${val}` : "펫 해제");
                 document.querySelectorAll('.customization-btn[data-pet]').forEach((b) => b.classList.remove('active'));
                 if (val) btn.classList.add('active');
@@ -768,7 +660,7 @@ export class MainScene extends Phaser.Scene {
                         if (type && !valid.includes(type)) { this.showToast("koala, alpaca, gecko 중 선택"); }
                         else {
                             db.ref('players/' + this.myId).update({ petType: val });
-                            this.syncUserDataForOffline({ petType: val });
+                            this.offline.syncNow({ petType: val });
                             this.showToast(val ? `펫: ${val}` : "펫 해제");
                         }
                     } else if (msg.startsWith('/hat ') || msg === '/hat') {
@@ -915,7 +807,7 @@ export class MainScene extends Phaser.Scene {
                         const pp = pl[pid];
                         if (pp && pp.tribeId === key) {
                             db.ref('players/' + pid).update({ tribeId: null, tribeColor: null });
-                            if (pid === this.myId) this.syncUserDataForOffline({ tribeId: null, tribeColor: null });
+                            if (pid === this.myId) this.offline.syncNow({ tribeId: null, tribeColor: null });
                         }
                     });
                 });
@@ -923,7 +815,7 @@ export class MainScene extends Phaser.Scene {
             this.removeBlock(key);
         });
 
-        /* onDisconnect().remove()는 loadUserDataAndCatchUp에서 설정됨 */
+        /* onDisconnect().remove()는 OfflineSystem.loadAndApply에서 설정됨 */
     }
 
     syncMyPetAndHat(petType, hatType, displayColor) {
@@ -944,22 +836,6 @@ export class MainScene extends Phaser.Scene {
             }
         }
         if (this.myHatSprite) { this.myHatSprite.x = this.myPlayer.x; this.myHatSprite.y = this.myPlayer.y - 18; }
-    }
-
-    /** V17: userData 동기화 (오프라인 시뮬레이션용). overrides로 즉시 반영된 값 전달 가능 */
-    syncUserDataForOffline(overrides = {}) {
-        db.ref('userData/' + this.myId).update({
-            petType: overrides.petType ?? this.myPetType,
-            petHunger: overrides.petHunger ?? this.myPetHunger,
-            tribeId: overrides.tribeId ?? this.myTribeId,
-            tribeColor: overrides.tribeColor ?? this.myTribeColor,
-            stone: overrides.stone ?? this.myStone,
-            wood: overrides.wood ?? this.myWood,
-            crystal: overrides.crystal ?? this.myCrystal,
-            hp: overrides.hp ?? this.myHp,
-            reputation: overrides.reputation ?? this.myReputation,
-            hatType: overrides.hatType ?? this.myHatType
-        });
     }
 
     showToast(msg) {
@@ -1005,7 +881,7 @@ export class MainScene extends Phaser.Scene {
                                 const pp = pl[pid];
                                 if (pp && pp.tribeId === k) {
                                     db.ref('players/' + pid).update({ tribeId: null, tribeColor: null });
-                                    if (pid === this.myId) this.syncUserDataForOffline({ tribeId: null, tribeColor: null });
+                                    if (pid === this.myId) this.offline.syncNow({ tribeId: null, tribeColor: null });
                                 }
                             });
                         });
