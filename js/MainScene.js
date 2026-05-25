@@ -1,6 +1,8 @@
 /* MainScene.js - V10~V13 QA 최적화 (Null Safety, Race Condition, Performance) */
-import { db } from './network.js';
+import { db } from './net/firebase.js';
 import { getStartData } from './startData.js';
+import { safeVal, safeNum } from './utils/safe.js';
+import { formatOfflineTime } from './utils/time.js';
 import {
     WORLD_WIDTH, WORLD_HEIGHT,
     ROCK_TARGET, TREE_TARGET, REMAINING_PER, SHOUT_COST,
@@ -21,19 +23,6 @@ import {
     OFFLINE_RATE, OFFLINE_24H_SEC,
     PET_HUNGER_PER_SEC, PET_HUNGER_MAX, TOTEM_ENTROPY_PER_SEC,
 } from './config/balance.js';
-
-const safeVal = (v, def = null) => (v != null ? v : def);
-const safeNum = (v, def = 0) => (typeof v === 'number' && !isNaN(v) ? v : def);
-
-/** V17: 초 단위를 "N시간 M분" 형식으로 변환 */
-function formatOfflineTime(seconds) {
-    if (seconds < 60) return `${Math.floor(seconds)}초`;
-    const mins = Math.floor(seconds / 60);
-    if (mins < 60) return `${mins}분`;
-    const hours = Math.floor(mins / 60);
-    const remainMins = mins % 60;
-    return remainMins > 0 ? `${hours}시간 ${remainMins}분` : `${hours}시간`;
-}
 
 export class MainScene extends Phaser.Scene {
     constructor() {

@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-05-25 — Phase B-2: utils/ + net/ 분리
+
+- **🏗️ 메인 아키텍트**: `MainScene.js`의 헬퍼 함수 → `js/utils/safe.js`(safeVal·safeNum) + `js/utils/time.js`(formatOfflineTime).
+- **📚 사서**: `js/network.js` + `js/firebaseConfig.js` → `js/net/firebase.js` + `js/net/config.js` 로 디렉토리 이전.
+- `MainScene.js`와 `game.js`의 import 경로 갱신.
+- 기존 루트 레벨 `network.js`, `firebaseConfig.js` 삭제.
+- 6개 파일 syntax check 통과. 옛 경로 참조 grep으로 0건 확인.
+- 발견: `js/player.js`는 `window.FW` 글로벌 패턴이지만 어디서도 로드/import 안 됨 → **죽은 코드 추정**. 다음 PR에서 별도 ADR로 검토.
+
+---
+
 ## 2026-05-25 — Phase B-1: balance.js 분리
 
 - **🏗️ 메인 아키텍트 + ⚖️ 경제학자**: `MainScene.js` 상단 43개 const → `js/config/balance.js`로 이주.

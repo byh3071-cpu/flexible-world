@@ -1,7 +1,7 @@
 /* game.js - 진입점 (Entry Point) */
 import { MainScene } from './MainScene.js';
 import { setStartData } from './startData.js';
-import { auth } from './network.js';
+import { auth } from './net/firebase.js';
 
 const loginScreen = document.getElementById('login-screen');
 const nickInput = document.getElementById('nickname-input');

@@ -1,4 +1,11 @@
-/* firebaseConfig.js - Firebase 설정 (API 키 보안 유지) */
+/**
+ * net/config.js — Firebase 프로젝트 설정
+ *
+ * ⚠️ apiKey는 클라이언트 측 공개 키임 (Firebase 도메인 제한으로 보호).
+ * 어뷰징 방지는 Authorized domains + database.rules.json + Anonymous Auth 조합으로.
+ * 상세는 docs/audits/SECURITY_AUDIT.md.
+ */
+
 export const firebaseConfig = {
     apiKey: "AIzaSyCSV10roV3mPluGBCONZwx47uULzC5sObE",
     authDomain: "flexible-world.firebaseapp.com",
