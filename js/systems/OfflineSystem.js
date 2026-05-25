@@ -1,25 +1,13 @@
 /**
- * OfflineSystem.js — V17 오프라인 시뮬레이션
+ * OfflineSystem.js — V17 오프라인 시뮬레이션 (부수효과 클래스)
  *
- * 역할:
- *   1) 게임 진입 시 userData·블록 로드 → 오프라인 catchUp 계산 → players 초기 설정
- *      → onDisconnect / beforeunload / 30초 자동 동기화 등록 (loadAndApply)
- *   2) 부족 변경·펫 변경·자원 변동 등 시점에 userData 즉시 동기화 (syncNow)
- *
- * 의존:
- *   - scene: Phaser.Scene 인스턴스. scene.myId, scene.myNickname, scene.myColor,
- *            scene.my{Stone,Wood,Crystal,Hp,Reputation,PetType,PetHunger,TribeId,
- *            TribeColor,HatType}, scene.time, scene.showToast 사용.
- *   - Firebase: db (RTDB), firebase.database.ServerValue.TIMESTAMP
+ * 순수 계산은 `./offline.calculations.js`의 `calculateCatchUp` 가 담당.
+ * 이 파일은 DB I/O·scene 변형·타이머 등록만.
  */
 
 import { db } from '../net/firebase.js';
 import { safeVal, safeNum } from '../utils/safe.js';
-import { formatOfflineTime } from '../utils/time.js';
-import {
-    OFFLINE_RATE, OFFLINE_24H_SEC,
-    PET_HUNGER_PER_SEC, PET_HUNGER_MAX, TOTEM_ENTROPY_PER_SEC,
-} from '../config/balance.js';
+import { calculateCatchUp } from './offline.calculations.js';
 
 export class OfflineSystem {
     constructor(scene) {
@@ -34,74 +22,47 @@ export class OfflineSystem {
             db.ref('blocks').once('value', (blocksSnap) => {
                 const userData = userSnap.val() || {};
                 const blocksData = blocksSnap.val() || {};
-                const lastLogin = safeNum(userData.lastLoginTime, 0);
                 const now = Date.now();
-                const offlineSeconds = lastLogin > 0 ? (now - lastLogin) / 1000 : 0;
+                const diff = calculateCatchUp(userData, blocksData, now, myId);
 
-                let petType = safeVal(userData.petType);
-                let petHunger = safeNum(userData.petHunger, 0);
-                let tribeId = safeVal(userData.tribeId);
-                let tribeColor = safeVal(userData.tribeColor);
+                // 토템 변경 DB 반영
+                for (const act of diff.totemActions) {
+                    if (act.type === 'remove') db.ref('blocks/' + act.key).remove();
+                    else db.ref('blocks/' + act.key).update({ hp: act.hp });
+                }
+
+                // catchUp 토스트
+                if (diff.toastMessage) {
+                    scene.time.delayedCall(800, () => scene.showToast('당신이 떠나있는 동안 ' + diff.toastMessage));
+                }
+
+                // scene 상태 반영
+                scene.myPetHunger = diff.petHunger;
+                scene.myTribeId = diff.tribeId;
+                scene.myTribeColor = diff.tribeColor;
+
+                // userData 패스스루
                 const savedStone = safeNum(userData.stone, 0);
                 const savedWood = safeNum(userData.wood, 0);
                 const savedCrystal = safeNum(userData.crystal, 0);
                 const savedHp = Math.min(100, Math.max(0, safeNum(userData.hp, 100)));
 
-                if (offlineSeconds > 0) {
-                    const effectiveSeconds = offlineSeconds * OFFLINE_RATE;
-                    const is24hOrMore = offlineSeconds >= OFFLINE_24H_SEC;
-
-                    if (petType && (petType === 'koala' || petType === 'alpaca' || petType === 'gecko')) {
-                        petHunger += effectiveSeconds * PET_HUNGER_PER_SEC;
-                        if (petHunger >= PET_HUNGER_MAX || is24hOrMore) {
-                            petType = null;
-                            petHunger = 0;
-                        }
-                    }
-
-                    const myTotemKeys = Object.keys(blocksData).filter((k) => {
-                        const b = blocksData[k];
-                        return b && b.type === 'totem' && b.ownerId === myId;
-                    });
-                    for (const tk of myTotemKeys) {
-                        const totem = blocksData[tk];
-                        const curHp = safeNum(totem.hp, 10000);
-                        const damage = effectiveSeconds * TOTEM_ENTROPY_PER_SEC;
-                        const nhp = Math.max(0, curHp - damage);
-                        if (nhp <= 0 || is24hOrMore) {
-                            db.ref('blocks/' + tk).remove();
-                            if (tribeId === tk) { tribeId = null; tribeColor = null; }
-                        } else {
-                            db.ref('blocks/' + tk).update({ hp: nhp });
-                        }
-                    }
-
-                    if (offlineSeconds >= 60) {
-                        const timeStr = formatOfflineTime(offlineSeconds);
-                        const msgs = [];
-                        if (petType && petHunger > 20) msgs.push('펫이 배고파합니다!');
-                        if (myTotemKeys.length > 0) msgs.push('토템이 시간에 시달립니다.');
-                        if (petType === null && userData.petType) msgs.push('펫이 도망쳤습니다.');
-                        const msg = msgs.length > 0 ? `${timeStr}이 흘렀습니다. ${msgs.join(' ')}` : `${timeStr}이 흘렀습니다.`;
-                        scene.time.delayedCall(800, () => scene.showToast('당신이 떠나있는 동안 ' + msg));
-                    }
-                }
-
-                scene.myPetHunger = Math.min(PET_HUNGER_MAX, petHunger);
-                scene.myTribeId = tribeId;
-                scene.myTribeColor = tribeColor;
-
                 const playerData = {
                     x: startX, y: startY, nickname: scene.myNickname, color: scene.myColor,
                     hp: savedHp, stone: savedStone, wood: savedWood, crystal: savedCrystal,
-                    tribeId, tribeColor, reputation: safeNum(userData.reputation, 0),
-                    petType, hatType: safeVal(userData.hatType), petHunger: scene.myPetHunger
+                    tribeId: diff.tribeId, tribeColor: diff.tribeColor,
+                    reputation: safeNum(userData.reputation, 0),
+                    petType: diff.petType, hatType: safeVal(userData.hatType),
+                    petHunger: diff.petHunger
                 };
                 db.ref('players/' + myId).set(playerData);
 
                 db.ref('userData/' + myId).update({
-                    lastLoginTime: now, petType, petHunger: scene.myPetHunger, tribeId, tribeColor,
-                    stone: playerData.stone, wood: playerData.wood, crystal: playerData.crystal, hp: playerData.hp, reputation: playerData.reputation, hatType: playerData.hatType
+                    lastLoginTime: now,
+                    petType: diff.petType, petHunger: diff.petHunger,
+                    tribeId: diff.tribeId, tribeColor: diff.tribeColor,
+                    stone: playerData.stone, wood: playerData.wood, crystal: playerData.crystal,
+                    hp: playerData.hp, reputation: playerData.reputation, hatType: playerData.hatType
                 });
                 db.ref('userData/' + myId).onDisconnect().update({
                     lastLoginTime: firebase.database.ServerValue.TIMESTAMP

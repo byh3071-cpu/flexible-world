@@ -199,6 +199,7 @@ js/
 | 작업 | 명령 |
 |---|---|
 | 로컬 실행 | `python3 -m http.server 8000` → `localhost:8000` |
+| 단위 테스트 (순수 함수) | `node --test tests/*.test.mjs` |
 | Firebase Rules 배포 | `firebase deploy --only database` |
 | 브랜치 생성 | `git checkout -b claude/<작업명>` |
 | 작업 로그 추가 | `docs/DEV_LOG.md` 상단에 `## YYYY-MM-DD` 섹션 추가 |

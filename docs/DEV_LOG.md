@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-05-25 — Phase B-5: OfflineSystem 순수 함수화 + 첫 단위 테스트
+
+- **🏗️ 메인 아키텍트**: `OfflineSystem.calculateCatchUp` 를 별도 모듈 `js/systems/offline.calculations.js` 로 분리.
+  - 의도: Firebase·Phaser·DOM 의존 0 → Node 환경에서 단위 테스트 가능.
+  - 부수효과(DB 쓰기, scene 변형, 토스트, 타이머)는 `OfflineSystem` 클래스에 잔류.
+- **🚑 필드 메딕**: `tests/OfflineSystem.test.mjs` 신설, **16개 단위 테스트** 작성 (Node 22 native `node:test`).
+  - 시나리오: lastLogin 0 / 펫 굶주림 누적·한계·24h / 알 수 없는 펫 종류 / 토템 일부·전부 손실 / 24h 강제 / 남의 토템 / 부족 토템 파괴 시 tribeId 초기화 / 토스트 60초 임계 / 펫 도망 메시지 조건 / petHunger clamp / null 입력 방어.
+  - 결과: **16/16 pass, 130ms**.
+- CLAUDE.md §6 「자주 쓰는 명령어」에 `node --test tests/*.test.mjs` 추가.
+- 폰 환경에서도 회귀 안전망 작동 시작. 앞으로 시스템 추출 시 동일 패턴 (순수+클래스+테스트).
+
+---
+
 ## 2026-05-25 — Phase B-4: OfflineSystem 추출 (첫 시스템 분해)
 
 - **🏗️ 메인 아키텍트**: `js/systems/OfflineSystem.js` 신설 (153줄). MainScene 의 V17 로직 두 메서드를 이주:
