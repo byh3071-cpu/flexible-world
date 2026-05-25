@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-05-25 — Phase B-3: 죽은 코드 player.js 삭제
+
+- **🚑 필드 메딕**: `js/player.js` 삭제 (66줄).
+- 5단계 검증으로 죽은 코드 확정: index.html 미로드 / 어떤 모듈도 import 안 함 / `window.FW` 호출자 0 / 함수들의 진짜 구현은 MainScene.js 내부에 별도 존재 / 최종 수정 3.5개월 전.
+- ADR-0004 작성 — 삭제 결정 근거와 향후 `js/entities/Player.js` 신설 시 이름 충돌 방지 효과 기록.
+- 표준 검증 게이트 3종 통과 (node --check, 정적 모듈 그래프, 옛 경로 grep).
+
+---
+
 ## 2026-05-25 — Phase B-2: utils/ + net/ 분리
 
 - **🏗️ 메인 아키텍트**: `MainScene.js`의 헬퍼 함수 → `js/utils/safe.js`(safeVal·safeNum) + `js/utils/time.js`(formatOfflineTime).
