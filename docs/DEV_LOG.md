@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-05-25 — Phase B-1: balance.js 분리
+
+- **🏗️ 메인 아키텍트 + ⚖️ 경제학자**: `MainScene.js` 상단 43개 const → `js/config/balance.js`로 이주.
+- 카테고리: WORLD / ECONOMY / COMBAT / TNT / TOTEM / UI / V14 JUDICIAL(deprecated) / PET / V18 BIOME / V18 WEATHER / V17 OFFLINE.
+- V14 사법 상수들은 `⚠️ DEPRECATED` 헤더로 격리 — ADR-0002에서 Phase C 철회 예정.
+- `MainScene.js`: 1,791줄 → 1,768줄 (변경 후), import 블록 한 곳에 집중.
+- syntax check 통과 (`node --check`).
+- ⚖️ 경제학자 모드가 이제 단독 영토(balance.js) 보유.
+
+---
+
 ## 2026-05-25 — Phase A: 하네스 구축
 
 - **🏗️ 메인 아키텍트 + 📚 사서**: `CLAUDE.md` 신규 작성 — 7 에이전트 페르소나, 철학 헌장, 작업 프로토콜, 노션 SoT 링크 통합.

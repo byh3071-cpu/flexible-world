@@ -1,50 +1,26 @@
 /* MainScene.js - V10~V13 QA 최적화 (Null Safety, Race Condition, Performance) */
 import { db } from './network.js';
 import { getStartData } from './startData.js';
-
-/* === 경제·밸런스 상수 (Economy & Balance) === */
-const ROCK_TARGET = 25, TREE_TARGET = 25, REMAINING_PER = 6;  /* 8→6: 채집지당 수확량 감소, 인플레이션 완화 */
-const SHOUT_COST = 50;
-const REPUTATION_DISPLAY_DURATION = 3000;
-const ANNOUNCEMENT_DURATION = 5000;
-const TERRITORY_RADIUS = 20 * 32;
-const TNT_EXPLODE_DELAY = 3000;
-const TNT_EXPLODE_RADIUS = 96;
-const TNT_PLAYER_DAMAGE = 100;       /* 즉사 유지 */
-const TNT_TOTEM_DAMAGE = 1000;
-const TNT_COST_STONE = 60, TNT_COST_WOOD = 60, TNT_COST_HP = 60;  /* 50→60: TNT 비용 상승 */
-const TOTEM_REPAIR_COST = 12;       /* 10→12: 토템 수리 비용 상승 */
-const TOTEM_REPAIR_AMOUNT = 500;
-const FIST_PLAYER_DAMAGE = 25;      /* 20→25: 5회→4회 사망, 긴장감 상승 (V8) */
-const FIST_TOTEM_DAMAGE = 25;       /* 토템 주먹 데미지 */
-/* 월드 크기 — 우측 이동 제한 해제 */
-const WORLD_WIDTH = 2400;
-const WORLD_HEIGHT = 600;
-/* V14: 사법 시스템 */
-const PRISON_CENTER_X = 64, PRISON_CENTER_Y = 64;
-const PRISON_GRID_MIN = -16, PRISON_GRID_MAX = 176;  /* 5x5 내부 + 벽 둘러쌈 */
-const JAIL_DURATION_MS = 30000;
-const ARREST_REP_THRESHOLD = -20;   /* 이 평판 이하만 체포 가능 */
-const BATON_REP_REQUIRED = 20;      /* 진압봉 사용 최소 평판 */
-/* V15: 펫 & 커스터마이징 */
-const PET_FOLLOW_LERP = 0.08;       /* 펫 추적 부드러움 */
-const PET_FOLLOW_DIST = 40;         /* 주인과 유지 거리 */
-/* V18: 환경·날씨 시스템 — 월드 내부 기준 */
-const BIOME_SNOW_Y = 80;            /* y < 이 값: 설원 (화면 상단) */
-const BIOME_DESERT_X = WORLD_WIDTH - 80;  /* x > 이 값: 사막 (우측 끝) */
-const SNOW_HP_PER_SEC = 1;
-const DESERT_SPEED_MULT = 0.5;
-const WEATHER_INTERVAL_MS = 180000; /* 3분 */
-const ACID_RAIN_DAMAGE = 5;         /* 산성비 초당 데미지 */
-const ACID_RAIN_BLOCK_DAMAGE = 2;   /* 건물 초당 데미지 */
-const CRYSTAL_TARGET = 8;           /* 설원·사막 각 구역당 수 */
-const CRYSTAL_REMAINING = 3;
-/* V17: 오프라인 시간 시뮬레이션 */
-const OFFLINE_RATE = 0.1;           /* 오프라인 시 감소 속도 10% */
-const OFFLINE_24H_SEC = 86400;      /* 24시간 (초) */
-const PET_HUNGER_PER_SEC = 1 / 600; /* 배고픔 1당 600초 (10분) */
-const TOTEM_ENTROPY_PER_SEC = 10000 / 8640; /* 24h 오프라인 시 토템 파괴 (8640 = 24h * 0.1) */
-const PET_HUNGER_MAX = 100;         /* 100 도달 시 펫 도망 */
+import {
+    WORLD_WIDTH, WORLD_HEIGHT,
+    ROCK_TARGET, TREE_TARGET, REMAINING_PER, SHOUT_COST,
+    FIST_PLAYER_DAMAGE, FIST_TOTEM_DAMAGE,
+    TNT_EXPLODE_DELAY, TNT_EXPLODE_RADIUS,
+    TNT_PLAYER_DAMAGE, TNT_TOTEM_DAMAGE,
+    TNT_COST_STONE, TNT_COST_WOOD, TNT_COST_HP,
+    TERRITORY_RADIUS, TOTEM_REPAIR_COST, TOTEM_REPAIR_AMOUNT,
+    REPUTATION_DISPLAY_DURATION, ANNOUNCEMENT_DURATION,
+    PRISON_CENTER_X, PRISON_CENTER_Y,
+    PRISON_GRID_MIN, PRISON_GRID_MAX,
+    JAIL_DURATION_MS, ARREST_REP_THRESHOLD, BATON_REP_REQUIRED,
+    PET_FOLLOW_LERP, PET_FOLLOW_DIST,
+    BIOME_SNOW_Y, BIOME_DESERT_X,
+    SNOW_HP_PER_SEC, DESERT_SPEED_MULT,
+    CRYSTAL_TARGET, CRYSTAL_REMAINING,
+    WEATHER_INTERVAL_MS, ACID_RAIN_DAMAGE, ACID_RAIN_BLOCK_DAMAGE,
+    OFFLINE_RATE, OFFLINE_24H_SEC,
+    PET_HUNGER_PER_SEC, PET_HUNGER_MAX, TOTEM_ENTROPY_PER_SEC,
+} from './config/balance.js';
 
 const safeVal = (v, def = null) => (v != null ? v : def);
 const safeNum = (v, def = 0) => (typeof v === 'number' && !isNaN(v) ? v : def);
