@@ -104,31 +104,43 @@
 ### 파일 구조 (현재)
 ```
 flexible-World/
-├── CLAUDE.md             ← 본 문서 (Claude Code SoT)
-├── .cursorrules          ← Cursor용 룰 (CLAUDE.md와 동기 유지)
-├── index.html            ← 진입점·UI 마크업
-├── database.rules.json   ← Firebase 보안 규칙
-├── css/style.css         ← 디자인
+├── CLAUDE.md                ← 본 문서 (Claude Code SoT)
+├── README.md                ← 프로젝트 소개·실행·테스트
+├── .cursorrules             ← Cursor용 룰 (CLAUDE.md와 동기 유지)
+├── .gitignore
+├── index.html               ← 진입점·UI 마크업
+├── database.rules.json      ← Firebase 보안 규칙
+├── css/style.css            ← 디자인
 ├── js/
-│   ├── MainScene.js      ← 🚨 1,791줄 (Phase B 분해 대상)
-│   ├── game.js           ← Phaser 설정
-│   ├── network.js        ← Firebase 초기화
-│   ├── firebaseConfig.js
-│   ├── player.js
-│   └── startData.js
+│   ├── MainScene.js         ← 🚨 1,632줄 (계속 분해 중)
+│   ├── game.js              ← 진입점·로그인·Phaser 설정
+│   ├── startData.js
+│   ├── config/
+│   │   └── balance.js       ← 모든 밸런스 상수 (43개)
+│   ├── net/
+│   │   ├── firebase.js      ← Firebase 초기화 (db·auth)
+│   │   └── config.js        ← apiKey 등
+│   ├── systems/
+│   │   ├── OfflineSystem.js          ← V17 부수효과 (DB·scene)
+│   │   └── offline.calculations.js   ← V17 순수 계산
+│   └── utils/
+│       ├── safe.js          ← safeVal·safeNum
+│       └── time.js          ← formatOfflineTime
+├── tests/
+│   └── OfflineSystem.test.mjs   ← 16개 단위 테스트
 └── docs/
-    ├── SPEC.md           ← 노션 본질 문서 미러
-    ├── DEV_LOG.md        ← 작업 로그
-    ├── ADR/              ← Architecture Decision Records
-    └── audits/           ← 보안·커뮤니티 감사 보고서
+    ├── SPEC.md              ← 노션 본질 문서 미러
+    ├── DEV_LOG.md           ← 작업 로그
+    ├── ADR/                 ← Architecture Decision Records (+ README 인덱스)
+    └── audits/              ← 보안·커뮤니티 감사 보고서
 ```
 
-### 파일 구조 (Phase B 이후 목표)
+### 파일 구조 (Phase B 목표)
 ```
 js/
 ├── MainScene.js              ← 씬 lifecycle만 (~150줄)
 ├── config/
-│   ├── balance.js            ← 모든 const
+│   ├── balance.js            ✅ 완료
 │   └── biomes.js
 ├── systems/
 │   ├── EconomySystem.js
@@ -136,15 +148,14 @@ js/
 │   ├── CombatSystem.js
 │   ├── BuildSystem.js
 │   ├── ReputationSystem.js
-│   └── OfflineSystem.js
+│   └── OfflineSystem.js      ✅ 완료 (순수+클래스+테스트 패턴)
 ├── entities/
 │   ├── Player.js
 │   ├── Pet.js
 │   └── Totem.js
 ├── net/
-│   ├── firebase.js
-│   ├── sync.js
-│   └── auth.js
+│   ├── firebase.js           ✅ 완료
+│   └── config.js             ✅ 완료
 └── ui/
     ├── HUD.js
     ├── Chat.js

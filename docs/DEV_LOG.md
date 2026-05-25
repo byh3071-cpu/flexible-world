@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-05-25 — 정리: README·.gitignore·ADR 인덱스·CLAUDE.md 동기화
+
+- **🎨 예술가 + 📚 사서**: 저장소 첫 인상 정리.
+  - `README.md` 신설 — 1줄 소개, 철학 4원칙, 실행·테스트 명령, 구조 링크.
+  - `.gitignore` 채움 — IDE/OS/로그/Node/.env/Firebase 로컬 산출물/빌드 산출물.
+  - `docs/ADR/README.md` 신설 — 4개 ADR 인덱스 표 + 새 ADR 템플릿.
+  - `CLAUDE.md` §3 파일 구조 — 현재 코드와 1:1 동기화 + Phase B 목표 트리에 ✅ 표시.
+- 코드 변경 0. 문서·메타 파일만.
+
+---
+
 ## 2026-05-25 — Phase B-5: OfflineSystem 순수 함수화 + 첫 단위 테스트
 
 - **🏗️ 메인 아키텍트**: `OfflineSystem.calculateCatchUp` 를 별도 모듈 `js/systems/offline.calculations.js` 로 분리.

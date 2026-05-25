@@ -1,0 +1,30 @@
+# IDE / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# 로그·임시
+*.log
+*.tmp
+.cache/
+
+# Node (테스트 환경)
+node_modules/
+package-lock.json
+npm-debug.log*
+
+# 환경 변수·시크릿
+.env
+.env.local
+.env.*.local
+
+# Firebase 로컬 산출물
+.firebase/
+firebase-debug.log
+firestore-debug.log
+database-debug.log
+
+# 빌드 산출물 (현재 빌드 도구 없음, 만일을 대비)
+dist/
+build/
