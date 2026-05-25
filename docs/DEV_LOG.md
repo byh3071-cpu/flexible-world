@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-05-25 — Phase B-6: WeatherSystem 1단계 — 순수 함수 추출
+
+- **🏗️ 메인 아키텍트**: V18 날씨·바이옴의 **순수 부분만** 먼저 추출.
+  - `js/systems/weather.calculations.js` 신설 (Phaser·Firebase·DOM 의존 0).
+  - 함수 4종: `WEATHER_TYPES`, `isValidWeather`, `pickNextWeather(rand)`, `getBiome(x,y)`, `weatherToast(w)`.
+- MainScene.js: 인라인 `weatherTypes` 배열 제거, 다음 날씨 선택·토스트·검증을 calculations 함수 호출로 교체.
+- 시각효과(파티클·DOM overlay)는 Phaser 의존이 강해 MainScene에 잔류 — 다음 PR에서 WeatherSystem 클래스로 점진 통합.
+- **`tests/WeatherCalculations.test.mjs` 신설, 16개 단위 테스트** 추가 (시드 random / 경계값 / 잘못된 입력 방어 / fallback).
+- 누적 테스트: 16 → **32 pass / 32**.
+
+---
+
 ## 2026-05-25 — 정리: README·.gitignore·ADR 인덱스·CLAUDE.md 동기화
 
 - **🎨 예술가 + 📚 사서**: 저장소 첫 인상 정리.

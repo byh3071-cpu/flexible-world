@@ -3,6 +3,7 @@ import { db } from './net/firebase.js';
 import { getStartData } from './startData.js';
 import { safeVal, safeNum } from './utils/safe.js';
 import { OfflineSystem } from './systems/OfflineSystem.js';
+import { isValidWeather, pickNextWeather, weatherToast } from './systems/weather.calculations.js';
 import {
     WORLD_WIDTH, WORLD_HEIGHT,
     ROCK_TARGET, TREE_TARGET, REMAINING_PER, SHOUT_COST,
@@ -246,11 +247,10 @@ export class MainScene extends Phaser.Scene {
         this.maybeSpawnCrystals();
         this.time.addEvent({ delay: 20000, loop: true, callback: () => this.maybeSpawnCrystals() });
 
-        /* V18: 날씨 타이머 — 3분마다 랜덤 변경 */
-        const weatherTypes = ['clear', 'rain', 'acid_rain'];
+        /* V18: 날씨 타이머 — 3분마다 랜덤 변경. 순수 계산은 weather.calculations.js. */
         db.ref('server/weather').once('value', (snap) => {
             let w = snap.val();
-            if (!w || !weatherTypes.includes(w)) {
+            if (!isValidWeather(w)) {
                 w = 'clear';
                 db.ref('server/weather').set(w);
             }
@@ -260,7 +260,7 @@ export class MainScene extends Phaser.Scene {
         });
         db.ref('server/weather').on('value', (snap) => {
             const w = snap.val();
-            if (w && weatherTypes.includes(w)) {
+            if (isValidWeather(w)) {
                 this.weather = w;
                 this.updateWeatherEffects();
                 this.updateWeatherIndicator();
@@ -269,9 +269,9 @@ export class MainScene extends Phaser.Scene {
         this.time.addEvent({
             delay: WEATHER_INTERVAL_MS, loop: true,
             callback: () => {
-                const next = weatherTypes[Math.floor(Math.random() * weatherTypes.length)];
+                const next = pickNextWeather();
                 db.ref('server/weather').set(next);
-                this.showToast(next === 'acid_rain' ? '☠️ 산성비!' : next === 'rain' ? '🌧 비' : '☀️ 맑음');
+                this.showToast(weatherToast(next));
             }
         });
 
